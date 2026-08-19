@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🎨 그림 맞추기 — 플레이어</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap');
+
+  :root {
+    --ink: #1a1a2e;
+    --paper: #fdf6e3;
+    --accent: #e63946;
+    --teal: #2a9d8f;
+    --yellow: #f4d03f;
+    --panel: #fff8ee;
+    --border: #d4b896;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 3px solid var(--accent);
+    flex-shrink: 0;
+  }
+
+  header h1 { font-family: 'Jua', sans-serif; font-size: 1.1rem; }
+
+  .my-name {
+    margin-left: auto;
+    font-size: .85rem;
+    background: rgba(255,255,255,.15);
+    padding: 4px 12px;
+    border-radius: 99px;
+  }
+
+  /* 접속 화면 */
+  #join-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    gap: 16px;
+  }
+
+  #join-screen h2 {
+    font-family: 'Jua', sans-serif;
+    font-size: 1.6rem;
+    color: var(--accent);
+    text-align: center;
+  }
+
+  .input-field {
+    width: 100%;
+    max-width: 340px;
+    padding: 14px 18px;
+    border: 2.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #fff;
+    text-align: center;
+  }
+
+  .input-field:focus { outline: none; border-color: var(--accent); }
+
+  .btn {
+    width: 100%;
+    max-width: 340px;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Jua', sans-serif;
+    font-size: 1.1rem;
+    cursor: pointer;
+    box-shadow: 0 4px 0 rgba(0,0,0,.2);
+    transition: all .1s;
+  }
+
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.15); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-teal { background: var(--teal); color: #fff; }
+  .btn-yellow { background: var(--yellow); color: var(--ink); }
+  .btn:disabled { background: #ddd; color: #aaa; cursor: not-allowed; box-shadow: none; }
+
+  /* 대기 화면 */
+  #lobby-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 16px;
+    text-align: center;
+  }
+
+  #lobby-screen .big-icon { font-size: 4rem; }
+  #lobby-screen h2 { font-family: 'Jua', sans-serif; font-size: 1.4rem; }
+  #lobby-screen p { color: #888; font-size: .9rem; }
+
+  .player-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    max-width: 340px;
+  }
+
+  .player-chip {
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: 99px;
+    padding: 6px 14px;
+    font-size: .85rem;
+  }
+
+  /* 캐치마인드 — 출제자 화면 */
+  #draw-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .draw-info {
+    padding: 8px 12px;
+    background: var(--ink);
+    color: var(--paper);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    font-size: .9rem;
+  }
+
+  .draw-info .the-word {
+    font-family: 'Jua', sans-serif;
+    font-size: 1.2rem;
+    color: var(--yellow);
+    letter-spacing: 2px;
+  }
+
+  .timer-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    font-size: .85rem;
+  }
+
+  .timer-bar-wrap {
+    width: 80px;
+    height: 8px;
+    background: rgba(255,255,255,.2);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .timer-bar {
+    height: 100%;
+    background: var(--teal);
+    border-radius: 99px;
+    transition: width 1s linear, background .3s;
+  }
+
+  .timer-bar.urgent { background: var(--accent); }
+
+  /* 툴바 */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--panel);
+    border-bottom: 1.5px solid var(--border);
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+
+  .color-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2.5px solid #ccc;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform .1s;
+  }
+
+  .color-btn.active { border-color: var(--ink); transform: scale(1.25); }
+
+  .size-btn {
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: .8rem;
+    flex-shrink: 0;
+  }
+
+  .size-btn.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .tool-sep { width: 1px; height: 24px; background: var(--border); margin: 0 2px; flex-shrink: 0; }
+
+  .tool-btn {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    cursor: pointer;
+    font-size: .8rem;
+    flex-shrink: 0;
+  }
+
+  .tool-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  canvas {
+    flex: 1;
+    display: block;
+    cursor: crosshair;
+    touch-action: none;
+    background: #fff;
+  }
+
+  /* 캐치마인드 — 추측자 화면 */
+  #guess-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .guess-canvas-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: #fff;
+  }
+
+  #guess-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+  }
+
+  .guess-info {
+    padding: 8px 14px;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: .9rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .chat-area {
+    display: flex;
+    flex-direction: column;
+    height: 200px;
+    flex-shrink: 0;
+    border-top: 2px solid var(--border);
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    background: var(--paper);
+  }
+
+  .chat-msg { font-size: .85rem; padding: 5px 10px; border-radius: 6px; }
+  .chat-msg.system { background: #f0f0f0; color: #666; font-style: italic; }
+  .chat-msg.correct { background: #d4edda; color: #155724; font-weight: 700; }
+  .chat-msg.mine { background: #dbeafe; align-self: flex-end; }
+  .chat-msg.other { background: #f0f0f0; align-self: flex-start; }
+
+  .chat-input-row {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #fff;
+    border-top: 1.5px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .chat-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: .95rem;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+
+  .chat-input:focus { outline: none; border-color: var(--teal); }
+
+  .send-btn {
+    padding: 10px 18px;
+    background: var(--teal);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Jua', sans-serif;
+    font-size: .95rem;
+    cursor: pointer;
+  }
+
+  /* Gartic: 문장 작성 */
+  #gartic-write-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 16px;
+    text-align: center;
+  }
+
+  #gartic-write-screen h2 { font-family: 'Jua', sans-serif; font-size: 1.3rem; }
+  #gartic-write-screen p { color: #666; font-size: .9rem; }
+
+  .sentence-input {
+    width: 100%;
+    max-width: 400px;
+    padding: 14px 16px;
+    border: 2.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 1rem;
+    font-family: 'Noto Sans KR', sans-serif;
+    resize: none;
+    height: 90px;
+  }
+
+  .sentence-input:focus { outline: none; border-color: var(--teal); }
+
+  /* Gartic: 그림 */
+  #gartic-draw-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .gartic-sentence-banner {
+    padding: 12px 16px;
+    background: var(--teal);
+    color: #fff;
+    font-family: 'Jua', sans-serif;
+    font-size: 1.05rem;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* Gartic: 추측 */
+  #gartic-guess-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    gap: 14px;
+    text-align: center;
+    overflow-y: auto;
+  }
+
+  #gartic-guess-screen h2 { font-family: 'Jua', sans-serif; font-size: 1.2rem; }
+
+  #gartic-guess-img {
+    max-width: 100%;
+    max-height: 280px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+  }
+
+  /* 결과 */
+  #result-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 12px;
+    text-align: center;
+    overflow-y: auto;
+  }
+
+  #result-screen h2 { font-family: 'Jua', sans-serif; font-size: 1.4rem; color: var(--accent); }
+
+  .score-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 18px;
+    width: 100%;
+    max-width: 340px;
+  }
+
+  .score-row .medal { font-size: 1.3rem; }
+  .score-row .name { font-weight: 700; flex: 1; text-align: left; }
+  .score-row .pts { font-family: 'Jua', sans-serif; color: var(--teal); }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎨 그림 맞추기</h1>
+  <div class="my-name" id="my-name-display">—</div>
+</header>
+
+<!-- 1. 입장 화면 -->
+<div id="join-screen">
+  <div style="font-size:3.5rem">🎮</div>
+  <h2>닉네임을 입력하세요</h2>
+  <input class="input-field" id="name-input" type="text" placeholder="예: 김철수"
+         maxlength="8" onkeydown="if(event.key==='Enter') joinGame()">
+  <button class="btn btn-primary" onclick="joinGame()">입장하기 →</button>
+</div>
+
+<!-- 2. 로비 대기 -->
+<div id="lobby-screen" class="hidden">
+  <div class="big-icon">⏳</div>
+  <h2>호스트를 기다리는 중…</h2>
+  <p>다른 플레이어들이 들어오면<br>호스트가 게임을 시작합니다.</p>
+  <div class="player-chips" id="player-chips"></div>
+</div>
+
+<!-- 3a. 출제자 화면 (캐치마인드) -->
+<div id="draw-screen" class="hidden">
+  <div class="draw-info">
+    <span>정답: </span>
+    <span class="the-word" id="my-word">—</span>
+    <div class="timer-wrap">
+      <div class="timer-bar-wrap"><div class="timer-bar" id="draw-timer-bar" style="width:100%"></div></div>
+      <span id="draw-timer-text">60</span>
+    </div>
+  </div>
+  <div class="toolbar" id="draw-toolbar">
+    <!-- 색상 -->
+    <div class="color-btn active" style="background:#1a1a2e" data-color="#1a1a2e" onclick="pickColor(this)"></div>
+    <div class="color-btn" style="background:#e63946" data-color="#e63946" onclick="pickColor(this)"></div>
+    <div class="color-btn" style="background:#2a9d8f" data-color="#2a9d8f" onclick="pickColor(this)"></div>
+    <div class="color-btn" style="background:#f4d03f" data-color="#f4d03f" onclick="pickColor(this)"></div>
+    <div class="color-btn" style="background:#a8dadc" data-color="#a8dadc" onclick="pickColor(this)"></div>
+    <div class="color-btn" style="background:#ff9f43" data-color="#ff9f43" onclick="pickColor(this)"></div>
+    <div class="color-btn" style="background:#6c5ce7" data-color="#6c5ce7" onclick="pickColor(this)"></div>
+    <div class="color-btn" style="background:#fff;border-color:#aaa" data-color="#ffffff" onclick="pickColor(this)"></div>
+    <div class="tool-sep"></div>
+    <!-- 굵기 -->
+    <div class="size-btn active" data-size="4" onclick="pickSize(this)">S</div>
+    <div class="size-btn" data-size="10" onclick="pickSize(this)">M</div>
+    <div class="size-btn" data-size="22" onclick="pickSize(this)">L</div>
+    <div class="tool-sep"></div>
+    <!-- 도구 -->
+    <div class="tool-btn" id="eraser-btn" onclick="toggleEraser()">🧹 지우개</div>
+    <div class="tool-btn" onclick="clearCanvas()">🗑 초기화</div>
+  </div>
+  <canvas id="draw-canvas"></canvas>
+</div>
+
+<!-- 3b. 추측자 화면 (캐치마인드) -->
+<div id="guess-screen" class="hidden">
+  <div class="guess-info">
+    <span id="who-is-drawing">— 이(가) 그리는 중</span>
+    <div class="timer-wrap" style="margin-left:auto">
+      <div class="timer-bar-wrap"><div class="timer-bar" id="guess-timer-bar" style="width:100%"></div></div>
+      <span id="guess-timer-text">60</span>
+    </div>
+  </div>
+  <div class="guess-canvas-wrap">
+    <canvas id="guess-canvas"></canvas>
+  </div>
+  <div class="chat-area">
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chat-input" type="text" placeholder="정답을 입력하고 Enter!"
+             onkeydown="if(event.key==='Enter') sendGuess()">
+      <button class="send-btn" onclick="sendGuess()">전송</button>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Gartic: 문장 작성 -->
+<div id="gartic-write-screen" class="hidden">
+  <div style="font-size:3rem">✏️</div>
+  <h2>재미있는 문장을 작성하세요!</h2>
+  <p>다른 사람이 이 문장을 보고 그림을 그릴 거예요.<br>
+  이상한 문장일수록 더 재미있어요! 😄</p>
+  <textarea class="sentence-input" id="gartic-sentence"
+            placeholder="예: 선글라스를 낀 상어가 자전거를 타는 모습"></textarea>
+  <div id="gartic-write-timer" style="font-family:'Jua',sans-serif;font-size:1.1rem;color:var(--accent)"></div>
+  <button class="btn btn-teal" onclick="submitSentence()">제출하기 →</button>
+</div>
+
+<!-- 5. Gartic: 그림 그리기 -->
+<div id="gartic-draw-screen" class="hidden">
+  <div class="gartic-sentence-banner" id="gartic-sentence-banner">—</div>
+  <div class="toolbar" id="gartic-toolbar">
+    <div class="color-btn active" style="background:#1a1a2e" data-color="#1a1a2e" onclick="pickColorG(this)"></div>
+    <div class="color-btn" style="background:#e63946" data-color="#e63946" onclick="pickColorG(this)"></div>
+    <div class="color-btn" style="background:#2a9d8f" data-color="#2a9d8f" onclick="pickColorG(this)"></div>
+    <div class="color-btn" style="background:#f4d03f" data-color="#f4d03f" onclick="pickColorG(this)"></div>
+    <div class="color-btn" style="background:#a8dadc" data-color="#a8dadc" onclick="pickColorG(this)"></div>
+    <div class="color-btn" style="background:#ff9f43" data-color="#ff9f43" onclick="pickColorG(this)"></div>
+    <div class="color-btn" style="background:#6c5ce7" data-color="#6c5ce7" onclick="pickColorG(this)"></div>
+    <div class="color-btn" style="background:#fff;border-color:#aaa" data-color="#ffffff" onclick="pickColorG(this)"></div>
+    <div class="tool-sep"></div>
+    <div class="size-btn active" data-size="4" onclick="pickSizeG(this)">S</div>
+    <div class="size-btn" data-size="10" onclick="pickSizeG(this)">M</div>
+    <div class="size-btn" data-size="22" onclick="pickSizeG(this)">L</div>
+    <div class="tool-sep"></div>
+    <div class="tool-btn" id="eraser-btn-g" onclick="toggleEraserG()">🧹 지우개</div>
+    <div class="tool-btn" onclick="clearCanvasG()">🗑 초기화</div>
+  </div>
+  <canvas id="gartic-canvas"></canvas>
+  <div style="padding:8px;text-align:right;background:var(--panel);border-top:1.5px solid var(--border);flex-shrink:0">
+    <div id="gartic-draw-timer" style="font-family:'Jua',sans-serif;font-size:.95rem;color:var(--accent);display:inline-block;margin-right:10px"></div>
+    <button class="btn btn-primary" style="display:inline-block;width:auto;padding:8px 20px" onclick="submitDrawing()">제출하기 →</button>
+  </div>
+</div>
+
+<!-- 6. Gartic: 추측 -->
+<div id="gartic-guess-screen" class="hidden">
+  <div style="font-size:2.5rem">🔍</div>
+  <h2>이 그림은 무엇일까요?</h2>
+  <img id="gartic-guess-img" src="" alt="그림">
+  <div id="gartic-guess-timer" style="font-family:'Jua',sans-serif;font-size:1.1rem;color:var(--accent)"></div>
+  <input class="input-field" id="gartic-guess-input" type="text" placeholder="추측을 입력하세요"
+         style="max-width:360px">
+  <button class="btn btn-teal" style="max-width:360px" onclick="submitGarticGuess()">제출하기 →</button>
+</div>
+
+<!-- 7. 결과 -->
+<div id="result-screen" class="hidden">
+  <div style="font-size:3rem">🏆</div>
+  <h2 id="result-title">결과 발표!</h2>
+  <div id="score-list" style="width:100%;max-width:340px;display:flex;flex-direction:column;gap:8px"></div>
+  <p id="result-msg" style="color:#888;font-size:.85rem;margin-top:8px">호스트가 다음 라운드를 시작할 때까지 기다려 주세요.</p>
+</div>
+
+<script>
+// ── 상태 ──
+let ws, myId, myName;
+let gameMode = null;
+let currentTimerInterval = null;
+let drawCtx, guessCtx, garticCtx;
+let isDrawing = false;
+let lastX = 0, lastY = 0;
+let currentColor = '#1a1a2e', currentSize = 4, isEraser = false;
+let currentColorG = '#1a1a2e', currentSizeG = 4, isEraserG = false;
+
+// ── WebSocket ──
+function connectWS() {
+  const host = location.hostname;
+  ws = new WebSocket(`ws://${host}:8765`);
+  ws.onopen = () => console.log('Connected');
+  ws.onmessage = e => handleMessage(JSON.parse(e.data));
+  ws.onclose = () => setTimeout(connectWS, 2000);
+}
+
+function send(obj) { if (ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+
+function joinGame() {
+  const name = document.getElementById('name-input').value.trim();
+  if (!name) { alert('닉네임을 입력해 주세요!'); return; }
+  myName = name;
+  myId = 'p_' + Date.now();
+  document.getElementById('my-name-display').textContent = name;
+  send({ type: 'join', role: 'player', name, id: myId });
+  showScreen('lobby-screen');
+}
+
+// ── 메시지 처리 ──
+function handleMessage(data) {
+  switch (data.type) {
+    case 'joined':
+      gameMode = data.game_state?.mode;
+      updateLobbyPlayers(data.game_state?.players || []);
+      break;
+
+    case 'player_joined':
+    case 'player_left':
+    case 'player_ready':
+      updateLobbyPlayers(data.players || []);
+      break;
+
+    case 'waiting_for_word':
+      showScreen('guess-screen');
+      document.getElementById('who-is-drawing').textContent = `✏️ ${data.drawer_name}이(가) 그리는 중…`;
+      addChat(`🎮 라운드 ${data.round}/${data.max_rounds} 시작! ${data.drawer_name}이(가) 출제합니다.`, 'system');
+      resizeGuessCanvas();
+      clearGuessCanvas();
+      break;
+
+    case 'your_word':
+      showScreen('draw-screen');
+      document.getElementById('my-word').textContent = data.word;
+      resizeDrawCanvas();
+      clearDrawCanvas();
+      break;
+
+    case 'round_start':
+      showScreen('guess-screen');
+      document.getElementById('who-is-drawing').textContent = `✏️ ${data.drawer_name}이(가) 그리는 중…`;
+      resizeGuessCanvas();
+      clearGuessCanvas();
+      startTimer(data.timer || 60, 'guess');
+      break;
+
+    case 'round_started':
+      startTimer(data.timer || 60, 'draw');
+      break;
+
+    case 'draw':
+      if (guessCtx) remoteDraw(guessCtx, data);
+      break;
+
+    case 'clear_canvas':
+      clearGuessCanvas();
+      break;
+
+    case 'correct_guess':
+      addChat(`✅ ${data.player_name}이(가) 정답을 맞혔습니다!`, 'correct');
+      updateScores(data.players);
+      break;
+
+    case 'chat':
+      addChat(`${data.player_name}: ${data.text}`, 'other');
+      break;
+
+    // ── Gartic ──
+    case 'gartic_write':
+      gameMode = 'gartic';
+      showScreen('gartic-write-screen');
+      document.getElementById('gartic-sentence').value = '';
+      startSimpleTimer(data.timer || 60, 'gartic-write-timer');
+      break;
+
+    case 'gartic_draw':
+      showScreen('gartic-draw-screen');
+      document.getElementById('gartic-sentence-banner').textContent = `📝 "${data.sentence}"`;
+      resizeGarticCanvas();
+      clearCanvasG();
+      startSimpleTimer(data.timer || 90, 'gartic-draw-timer');
+      break;
+
+    case 'gartic_guess':
+      showScreen('gartic-guess-screen');
+      document.getElementById('gartic-guess-img').src = data.image;
+      document.getElementById('gartic-guess-input').value = '';
+      startSimpleTimer(data.timer || 60, 'gartic-guess-timer');
+      break;
+
+    case 'gartic_results':
+      showScreen('result-screen');
+      document.getElementById('result-title').textContent = '🎉 왜곡 결과 공개!';
+      document.getElementById('score-list').innerHTML = '';
+      document.getElementById('result-msg').textContent = '호스트 화면에서 릴레이 결과를 확인하세요!';
+      break;
+
+    case 'game_ended':
+      showScreen('result-screen');
+      document.getElementById('result-title').textContent = '🏆 최종 결과!';
+      showFinalScores(data.players);
+      break;
+  }
+}
+
+// ── 화면 전환 ──
+function showScreen(id) {
+  ['join-screen','lobby-screen','draw-screen','guess-screen',
+   'gartic-write-screen','gartic-draw-screen','gartic-guess-screen','result-screen']
+    .forEach(s => document.getElementById(s).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  clearInterval(currentTimerInterval);
+}
+
+// ── 로비 플레이어 업데이트 ──
+function updateLobbyPlayers(list) {
+  const chips = document.getElementById('player-chips');
+  if (chips) chips.innerHTML = list.map(p =>
+    `<div class="player-chip">${p.name === myName ? '⭐ ' : ''}${p.name}</div>`
+  ).join('');
+}
+
+function updateScores(list) {
+  // 게임 중 점수 업데이트 (채팅에 표시)
+}
+
+function showFinalScores(list) {
+  const sorted = [...list].sort((a, b) => b.score - a.score);
+  document.getElementById('score-list').innerHTML = sorted.map((p, i) => `
+    <div class="score-row">
+      <div class="medal">${['🥇','🥈','🥉'][i] || (i+1)+'위'}</div>
+      <div class="name">${p.name}${p.id === myId ? ' (나)' : ''}</div>
+      <div class="pts">${p.score}점</div>
+    </div>
+  `).join('');
+}
+
+// ── 타이머 ──
+function startTimer(seconds, type) {
+  clearInterval(currentTimerInterval);
+  let left = seconds;
+  const bar = document.getElementById(type === 'draw' ? 'draw-timer-bar' : 'guess-timer-bar');
+  const txt = document.getElementById(type === 'draw' ? 'draw-timer-text' : 'guess-timer-text');
+  if (!bar) return;
+  currentTimerInterval = setInterval(() => {
+    left--;
+    const pct = (left / seconds) * 100;
+    bar.style.width = pct + '%';
+    bar.classList.toggle('urgent', left <= 10);
+    if (txt) txt.textContent = left;
+    if (left <= 0) clearInterval(currentTimerInterval);
+  }, 1000);
+}
+
+function startSimpleTimer(seconds, elId) {
+  clearInterval(currentTimerInterval);
+  let left = seconds;
+  const el = document.getElementById(elId);
+  if (el) el.textContent = `⏱ ${left}초`;
+  currentTimerInterval = setInterval(() => {
+    left--;
+    if (el) el.textContent = `⏱ ${left}초`;
+    if (left <= 0) clearInterval(currentTimerInterval);
+  }, 1000);
+}
+
+// ── 채팅 ──
+function sendGuess() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  send({ type: 'guess', text });
+  addChat(`나: ${text}`, 'mine');
+  input.value = '';
+}
+
+function addChat(text, cls) {
+  const el = document.getElementById('chat-messages');
+  if (!el) return;
+  const div = document.createElement('div');
+  div.className = `chat-msg ${cls}`;
+  div.textContent = text;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Gartic 제출 ──
+function submitSentence() {
+  const sentence = document.getElementById('gartic-sentence').value.trim();
+  if (!sentence) { alert('문장을 입력해 주세요!'); return; }
+  send({ type: 'submit_sentence', sentence });
+  showScreen('lobby-screen');
+  document.getElementById('lobby-screen').querySelector('h2').textContent = '제출 완료! 다른 플레이어를 기다리는 중…';
+}
+
+function submitDrawing() {
+  const canvas = document.getElementById('gartic-canvas');
+  const imageData = canvas.toDataURL('image/png');
+  send({ type: 'submit_drawing', image: imageData });
+  showScreen('lobby-screen');
+  document.getElementById('lobby-screen').querySelector('h2').textContent = '그림 제출 완료! 기다려 주세요…';
+}
+
+function submitGarticGuess() {
+  const guess = document.getElementById('gartic-guess-input').value.trim();
+  if (!guess) { alert('추측을 입력해 주세요!'); return; }
+  send({ type: 'submit_gartic_guess', guess });
+  showScreen('lobby-screen');
+  document.getElementById('lobby-screen').querySelector('h2').textContent = '제출 완료! 결과를 기다리는 중…';
+}
+
+// ── 캔버스 (출제자) ──
+function resizeDrawCanvas() {
+  const canvas = document.getElementById('draw-canvas');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+  drawCtx = canvas.getContext('2d');
+  drawCtx.lineCap = 'round';
+  drawCtx.lineJoin = 'round';
+}
+
+function clearDrawCanvas() {
+  if (drawCtx) {
+    drawCtx.clearRect(0, 0, drawCtx.canvas.width, drawCtx.canvas.height);
+    drawCtx.fillStyle = '#fff';
+    drawCtx.fillRect(0, 0, drawCtx.canvas.width, drawCtx.canvas.height);
+  }
+}
+
+function clearCanvas() {
+  clearDrawCanvas();
+  send({ type: 'clear_canvas' });
+}
+
+function setupDrawCanvas() {
+  const canvas = document.getElementById('draw-canvas');
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return [(src.clientX - rect.left) * (canvas.width / rect.width),
+            (src.clientY - rect.top) * (canvas.height / rect.height)];
+  }
+  function down(e) {
+    e.preventDefault();
+    isDrawing = true;
+    [lastX, lastY] = getPos(e);
+  }
+  function move(e) {
+    e.preventDefault();
+    if (!isDrawing || !drawCtx) return;
+    const [x, y] = getPos(e);
+    const color = isEraser ? '#ffffff' : currentColor;
+    const size = isEraser ? currentSize * 3 : currentSize;
+    drawLine(drawCtx, lastX, lastY, x, y, color, size);
+    send({ type: 'draw', x0: lastX / canvas.width, y0: lastY / canvas.height,
+           x1: x / canvas.width, y1: y / canvas.height, color, size });
+    [lastX, lastY] = [x, y];
+  }
+  function up(e) { e.preventDefault(); isDrawing = false; }
+
+  canvas.addEventListener('mousedown', down);
+  canvas.addEventListener('mousemove', move);
+  canvas.addEventListener('mouseup', up);
+  canvas.addEventListener('mouseleave', up);
+  canvas.addEventListener('touchstart', down, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', up, { passive: false });
+}
+
+function pickColor(el) {
+  document.querySelectorAll('#draw-toolbar .color-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentColor = el.dataset.color;
+  isEraser = false;
+  document.getElementById('eraser-btn').classList.remove('active');
+}
+
+function pickSize(el) {
+  document.querySelectorAll('#draw-toolbar .size-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentSize = parseInt(el.dataset.size);
+}
+
+function toggleEraser() {
+  isEraser = !isEraser;
+  document.getElementById('eraser-btn').classList.toggle('active', isEraser);
+}
+
+// ── 캔버스 (추측자) ──
+function resizeGuessCanvas() {
+  const canvas = document.getElementById('guess-canvas');
+  const wrap = canvas.parentElement;
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  guessCtx = canvas.getContext('2d');
+  guessCtx.fillStyle = '#fff';
+  guessCtx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function clearGuessCanvas() {
+  if (!guessCtx) return;
+  guessCtx.clearRect(0, 0, guessCtx.canvas.width, guessCtx.canvas.height);
+  guessCtx.fillStyle = '#fff';
+  guessCtx.fillRect(0, 0, guessCtx.canvas.width, guessCtx.canvas.height);
+}
+
+function remoteDraw(ctx, data) {
+  const w = ctx.canvas.width, h = ctx.canvas.height;
+  drawLine(ctx, data.x0 * w, data.y0 * h, data.x1 * w, data.y1 * h, data.color, data.size);
+}
+
+// ── Gartic 캔버스 ──
+function resizeGarticCanvas() {
+  const canvas = document.getElementById('gartic-canvas');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+  garticCtx = canvas.getContext('2d');
+  garticCtx.fillStyle = '#fff';
+  garticCtx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function clearCanvasG() {
+  if (!garticCtx) return;
+  garticCtx.clearRect(0, 0, garticCtx.canvas.width, garticCtx.canvas.height);
+  garticCtx.fillStyle = '#fff';
+  garticCtx.fillRect(0, 0, garticCtx.canvas.width, garticCtx.canvas.height);
+}
+
+function setupGarticCanvas() {
+  const canvas = document.getElementById('gartic-canvas');
+  let gDrawing = false, gLastX = 0, gLastY = 0;
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return [(src.clientX - rect.left) * (canvas.width / rect.width),
+            (src.clientY - rect.top) * (canvas.height / rect.height)];
+  }
+  function down(e) { e.preventDefault(); gDrawing = true; [gLastX, gLastY] = getPos(e); }
+  function move(e) {
+    e.preventDefault();
+    if (!gDrawing || !garticCtx) return;
+    const [x, y] = getPos(e);
+    const color = isEraserG ? '#ffffff' : currentColorG;
+    const size = isEraserG ? currentSizeG * 3 : currentSizeG;
+    drawLine(garticCtx, gLastX, gLastY, x, y, color, size);
+    [gLastX, gLastY] = [x, y];
+  }
+  function up(e) { e.preventDefault(); gDrawing = false; }
+  canvas.addEventListener('mousedown', down);
+  canvas.addEventListener('mousemove', move);
+  canvas.addEventListener('mouseup', up);
+  canvas.addEventListener('mouseleave', up);
+  canvas.addEventListener('touchstart', down, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', up, { passive: false });
+}
+
+function pickColorG(el) {
+  document.querySelectorAll('#gartic-toolbar .color-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentColorG = el.dataset.color;
+  isEraserG = false;
+  document.getElementById('eraser-btn-g').classList.remove('active');
+}
+
+function pickSizeG(el) {
+  document.querySelectorAll('#gartic-toolbar .size-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentSizeG = parseInt(el.dataset.size);
+}
+
+function toggleEraserG() {
+  isEraserG = !isEraserG;
+  document.getElementById('eraser-btn-g').classList.toggle('active', isEraserG);
+}
+
+// ── 공통 선 그리기 ──
+function drawLine(ctx, x0, y0, x1, y1, color, size) {
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = size;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+}
+
+// ── 초기화 ──
+window.addEventListener('resize', () => {
+  const activeScreens = {
+    'draw-screen': () => resizeDrawCanvas(),
+    'guess-screen': () => resizeGuessCanvas(),
+    'gartic-draw-screen': () => resizeGarticCanvas(),
+  };
+  for (const [id, fn] of Object.entries(activeScreens)) {
+    if (!document.getElementById(id).classList.contains('hidden')) fn();
+  }
+});
+
+setupDrawCanvas();
+setupGarticCanvas();
+connectWS();
+</script>
+</body>
+</html>

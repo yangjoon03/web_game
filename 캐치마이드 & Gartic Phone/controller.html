@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎨 그림 맞추기 — 컨트롤러</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap');
+
+  :root {
+    --ink: #1a1a2e;
+    --paper: #fdf6e3;
+    --accent: #e63946;
+    --teal: #2a9d8f;
+    --yellow: #f4d03f;
+    --green: #2ecc71;
+    --panel: #fff8ee;
+    --border: #d4b896;
+    --shadow: 0 4px 0 #c9a87c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--ink);
+    color: var(--paper);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 4px solid var(--accent);
+    gap: 12px;
+  }
+
+  header h1 { font-family: 'Jua', sans-serif; font-size: 1.5rem; letter-spacing: 1px; }
+
+  .header-right { display: flex; align-items: center; gap: 12px; }
+
+  .badge {
+    background: var(--accent);
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    letter-spacing: 1px;
+  }
+
+  /* ── 자동화 모드 토글 ── */
+  .auto-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,.1);
+    border: 1.5px solid rgba(255,255,255,.2);
+    border-radius: 99px;
+    padding: 5px 14px 5px 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: all .2s;
+  }
+
+  .auto-toggle:hover { background: rgba(255,255,255,.18); }
+  .auto-toggle.on { background: rgba(46,204,113,.25); border-color: var(--green); }
+
+  .toggle-knob {
+    width: 36px;
+    height: 20px;
+    background: #555;
+    border-radius: 99px;
+    position: relative;
+    transition: background .2s;
+    flex-shrink: 0;
+  }
+
+  .toggle-knob::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    top: 3px;
+    left: 3px;
+    transition: left .2s;
+  }
+
+  .auto-toggle.on .toggle-knob { background: var(--green); }
+  .auto-toggle.on .toggle-knob::after { left: 19px; }
+
+  .toggle-label { font-family: 'Jua', sans-serif; font-size: .85rem; color: var(--paper); }
+  .auto-toggle.on .toggle-label { color: #a8f5c7; }
+
+  /* ── 자동 모드 상태 표시줄 ── */
+  .auto-status-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: #1a3a28;
+    color: #a8f5c7;
+    padding: 8px 28px;
+    font-size: .85rem;
+    border-bottom: 2px solid var(--green);
+  }
+
+  .auto-status-bar.visible { display: flex; }
+  .auto-status-bar .pulse {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 1.2s infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .4; transform: scale(.7); }
+  }
+
+  .auto-countdown {
+    margin-left: auto;
+    font-family: 'Jua', sans-serif;
+    font-size: .9rem;
+    color: var(--green);
+  }
+
+  /* ── 레이아웃 ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    gap: 20px;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+  }
+
+  .panel h2 {
+    font-family: 'Jua', sans-serif;
+    font-size: 1rem;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px dashed var(--border);
+    color: var(--accent);
+  }
+
+  /* 플레이어 목록 */
+  .player-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: #fff;
+    border: 1.5px solid var(--border);
+    font-size: .9rem;
+    transition: all .2s;
+  }
+
+  .player-item.drawer { border-color: var(--accent); background: #fff0f0; }
+
+  .player-avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .player-score { margin-left: auto; font-family: 'Jua', sans-serif; font-size: 1.1rem; color: var(--teal); }
+
+  .center { display: flex; flex-direction: column; gap: 16px; }
+
+  /* 로비 */
+  #lobby-panel .mode-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .mode-btn {
+    padding: 18px;
+    border-radius: 12px;
+    border: 3px solid var(--border);
+    background: #fff;
+    cursor: pointer;
+    text-align: center;
+    transition: all .15s;
+    font-family: 'Jua', sans-serif;
+    font-size: 1rem;
+  }
+
+  .mode-btn.selected { border-color: var(--accent); background: #fff0f0; box-shadow: 0 3px 0 var(--accent); }
+  .mode-btn .icon { font-size: 2rem; display: block; margin-bottom: 6px; }
+  .mode-btn small { display: block; font-family: 'Noto Sans KR', sans-serif; font-size: .75rem; color: #666; margin-top: 4px; }
+
+  .rounds-control { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .rounds-control span { font-weight: 700; flex: 1; }
+  .rounds-control input[type=range] { flex: 2; accent-color: var(--accent); }
+  #rounds-display { font-family: 'Jua', sans-serif; font-size: 1.2rem; color: var(--accent); width: 30px; text-align: center; }
+
+  /* 버튼 */
+  .btn {
+    display: block; width: 100%; padding: 14px;
+    border: none; border-radius: 10px;
+    font-family: 'Jua', sans-serif; font-size: 1.1rem;
+    cursor: pointer; transition: all .1s;
+    box-shadow: 0 4px 0 rgba(0,0,0,.2);
+  }
+
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.2); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-teal { background: var(--teal); color: #fff; }
+  .btn-yellow { background: var(--yellow); color: var(--ink); }
+  .btn:disabled { background: #ddd; color: #aaa; cursor: not-allowed; box-shadow: none; }
+
+  /* 제시어 패널 (수동 모드) */
+  #word-panel .word-input-area { display: flex; flex-direction: column; gap: 10px; }
+
+  .word-input {
+    width: 100%; padding: 12px 14px;
+    border: 2px solid var(--border); border-radius: 8px;
+    font-size: 1rem; font-family: 'Noto Sans KR', sans-serif; background: #fff;
+  }
+
+  .word-input:focus { outline: none; border-color: var(--accent); }
+
+  .quick-words { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+
+  .quick-word {
+    padding: 5px 12px; background: #fff;
+    border: 1.5px solid var(--border); border-radius: 99px;
+    font-size: .8rem; cursor: pointer; transition: all .1s;
+  }
+
+  .quick-word:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 자동 제시어 패널 */
+  #auto-word-panel {
+    background: #1a3a28;
+    border: 2px solid var(--green);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: 0 4px 0 #145a20;
+  }
+
+  #auto-word-panel h2 { color: #a8f5c7; border-bottom-color: rgba(168,245,199,.3); font-family: 'Jua', sans-serif; font-size: 1rem; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px dashed rgba(168,245,199,.3); }
+
+  .auto-word-display {
+    background: rgba(0,0,0,.3);
+    border-radius: 10px;
+    padding: 18px;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+
+  .auto-word-display .label { font-size: .75rem; color: #6fcf97; margin-bottom: 4px; }
+  .auto-word-display .word { font-family: 'Jua', sans-serif; font-size: 1.6rem; color: #a8f5c7; letter-spacing: 3px; }
+  .auto-word-display .round-tag { font-size: .8rem; color: #6fcf97; margin-top: 4px; }
+
+  .auto-next-bar {
+    background: rgba(255,255,255,.1);
+    border-radius: 99px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+
+  .auto-next-fill {
+    height: 100%;
+    background: var(--green);
+    border-radius: 99px;
+    transition: width 1s linear;
+  }
+
+  .auto-hint { font-size: .75rem; color: #6fcf97; text-align: center; }
+
+  /* 라운드 진행 */
+  .round-info {
+    background: var(--ink); color: var(--paper);
+    border-radius: 10px; padding: 14px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'Jua', sans-serif;
+  }
+
+  .round-info .word-reveal { font-size: 1.3rem; color: var(--yellow); letter-spacing: 2px; }
+
+  /* 채팅 */
+  .chat-log {
+    height: 300px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 8px; background: #fff;
+    border: 1.5px solid var(--border); border-radius: 8px;
+  }
+
+  .chat-msg { font-size: .85rem; padding: 6px 10px; border-radius: 6px; }
+  .chat-msg.system { background: #f0f0f0; color: #666; font-style: italic; }
+  .chat-msg.correct { background: #d4edda; color: #155724; font-weight: 700; }
+  .chat-msg.wrong { background: #f8f9fa; }
+  .chat-msg.auto { background: #e8f5e9; color: #2e7d32; font-style: italic; }
+
+  /* 타이머 */
+  .timer-bar-wrap { background: #eee; border-radius: 99px; height: 10px; overflow: hidden; margin-bottom: 8px; }
+  .timer-bar { height: 100%; background: var(--teal); border-radius: 99px; transition: width 1s linear, background .3s; }
+  .timer-bar.urgent { background: var(--accent); }
+
+  /* Gartic */
+  .relay-chain { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; }
+  .relay-item { background: #fff; border: 1.5px solid var(--border); border-radius: 8px; padding: 12px; }
+  .relay-item .relay-author { font-size: .75rem; color: #888; margin-bottom: 4px; }
+  .relay-item.sentence-item { border-left: 4px solid var(--teal); }
+  .relay-item.drawing-item { border-left: 4px solid var(--accent); }
+  .relay-item.guess-item { border-left: 4px solid var(--yellow); }
+  .relay-item img { max-width: 100%; border-radius: 4px; }
+
+  /* IP 박스 */
+  .ip-box {
+    background: var(--ink); color: var(--yellow);
+    font-family: monospace; font-size: 1.1rem;
+    padding: 12px 16px; border-radius: 8px;
+    text-align: center; letter-spacing: 1px; margin-bottom: 12px;
+  }
+
+  .conn-count { text-align: center; font-size: .85rem; color: #888; margin-bottom: 12px; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎨 그림 맞추기 — 컨트롤러</h1>
+  <div class="header-right">
+    <!-- 자동화 모드 토글 -->
+    <div class="auto-toggle" id="auto-toggle" onclick="toggleAutoMode()">
+      <div class="toggle-knob"></div>
+      <span class="toggle-label">자동화 모드</span>
+    </div>
+    <span class="badge" id="phase-badge">로비</span>
+  </div>
+</header>
+
+<!-- 자동 모드 상태 표시줄 -->
+<div class="auto-status-bar" id="auto-status-bar">
+  <div class="pulse"></div>
+  <span id="auto-status-text">자동화 모드 활성 — 게임이 알아서 진행됩니다</span>
+  <span class="auto-countdown" id="auto-countdown"></span>
+</div>
+
+<div class="layout">
+
+  <!-- 왼쪽: 플레이어 목록 -->
+  <aside>
+    <div class="panel">
+      <h2>👥 플레이어</h2>
+      <div id="player-list"></div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2>📡 접속 안내</h2>
+      <div class="ip-box" id="ip-display">연결 중…</div>
+      <div class="conn-count" id="conn-count">접속 0명</div>
+      <div style="font-size:.8rem;color:#888;line-height:1.6">
+        친구들에게 위 주소로 접속하라고 알려주세요.<br>같은 Wi-Fi여야 합니다.
+      </div>
+    </div>
+  </aside>
+
+  <!-- 중앙 -->
+  <main class="center">
+
+    <!-- 로비 -->
+    <div class="panel" id="lobby-panel">
+      <h2>🎮 게임 설정</h2>
+      <div class="mode-btns">
+        <div class="mode-btn selected" id="mode-catchmind" onclick="selectMode('catchmind')">
+          <span class="icon">🖊️</span>캐치마인드
+          <small>한 명이 그리고<br>나머지가 맞추기</small>
+        </div>
+        <div class="mode-btn" id="mode-gartic" onclick="selectMode('gartic')">
+          <span class="icon">📞</span>Gartic Phone
+          <small>문장→그림→문장<br>왜곡 릴레이</small>
+        </div>
+      </div>
+      <div class="rounds-control" id="rounds-row">
+        <span>라운드 수</span>
+        <input type="range" min="1" max="10" value="3" id="rounds-slider"
+               oninput="document.getElementById('rounds-display').textContent=this.value">
+        <span id="rounds-display">3</span>
+      </div>
+      <!-- 자동 모드일 때: 제시어 목록 편집 -->
+      <div id="word-list-editor" class="hidden" style="margin-bottom:14px">
+        <div style="font-size:.85rem;font-weight:700;margin-bottom:6px;color:var(--teal)">📋 자동 제시어 목록 <span style="font-weight:400;color:#888">(쉼표로 구분)</span></div>
+        <textarea id="word-list-input" style="width:100%;height:80px;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:.82rem;resize:vertical;font-family:'Noto Sans KR',sans-serif" placeholder="단어1, 단어2, 단어3 …"></textarea>
+      </div>
+      <button class="btn btn-primary" id="start-btn" onclick="startGame()" disabled>
+        ⏳ 플레이어 대기 중…
+      </button>
+    </div>
+
+    <!-- [수동] 제시어 입력 -->
+    <div class="panel hidden" id="word-panel">
+      <h2>✏️ 제시어 입력</h2>
+      <div id="word-round-info" style="margin-bottom:10px;font-size:.9rem;color:#555"></div>
+      <div class="word-input-area">
+        <input class="word-input" id="word-input" type="text" placeholder="제시어를 입력하세요"
+               onkeydown="if(event.key==='Enter') sendWord()">
+        <div class="quick-words" id="quick-words"></div>
+        <button class="btn btn-primary" onclick="sendWord()">제시어 전달 →</button>
+      </div>
+    </div>
+
+    <!-- [자동] 제시어 표시 패널 -->
+    <div id="auto-word-panel" class="hidden">
+      <h2>🤖 자동 진행 중</h2>
+      <div class="auto-word-display">
+        <div class="label">이번 라운드 정답</div>
+        <div class="word" id="auto-word-text">—</div>
+        <div class="round-tag" id="auto-round-tag"></div>
+      </div>
+      <div class="auto-next-bar"><div class="auto-next-fill" id="auto-next-fill" style="width:100%"></div></div>
+      <div class="auto-hint" id="auto-hint-text">정답자가 나오거나 타이머 종료 시 자동으로 넘어갑니다</div>
+    </div>
+
+    <!-- 라운드 진행 중 (수동) -->
+    <div class="panel hidden" id="drawing-panel">
+      <h2>🎨 진행 중</h2>
+      <div class="round-info">
+        <div>
+          <div style="font-size:.8rem;opacity:.7">현재 출제자</div>
+          <div id="drawer-name-display" style="font-size:1.1rem"></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:.8rem;opacity:.7">정답</div>
+          <div class="word-reveal" id="word-display">—</div>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="timer-bar-wrap"><div class="timer-bar" id="timer-bar" style="width:100%"></div></div>
+        <div style="text-align:right;font-size:.85rem;color:#888" id="timer-text">60초</div>
+      </div>
+      <button class="btn btn-yellow" style="margin-top:12px" onclick="nextRound()">⏭ 다음 라운드</button>
+    </div>
+
+    <!-- Gartic 진행 상태 -->
+    <div class="panel hidden" id="gartic-status-panel">
+      <h2>📊 Gartic 진행 상태</h2>
+      <div id="gartic-status-text" style="color:#555;font-size:.9rem;margin-bottom:10px"></div>
+      <div id="gartic-submissions"></div>
+    </div>
+
+    <!-- 결과 -->
+    <div class="panel hidden" id="results-panel">
+      <h2>🏆 최종 결과</h2>
+      <div id="final-scores"></div>
+      <div id="relay-chain-wrap" class="hidden">
+        <h3 style="margin:14px 0 8px;font-family:'Jua',sans-serif">📖 릴레이 체인</h3>
+        <div class="relay-chain" id="relay-chain"></div>
+      </div>
+      <button class="btn btn-teal" style="margin-top:16px" onclick="backToLobby()">🔄 다시 하기</button>
+    </div>
+
+  </main>
+
+  <!-- 오른쪽: 채팅 로그 -->
+  <aside>
+    <div class="panel">
+      <h2>💬 채팅 로그</h2>
+      <div class="chat-log" id="chat-log"></div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+const WS_URL = `ws://${location.hostname}:8765`;
+let ws;
+let selectedMode = 'catchmind';
+let players = {};
+let timerInterval = null;
+let timerSeconds = 60;
+let garticSubmissions = { sentence: new Set(), drawing: new Set(), guess: new Set() };
+
+// ── 자동화 모드 상태 ──
+let autoMode = false;
+let autoNextTimeout = null;   // 타이머 종료 후 자동 다음 라운드 예약
+let autoCountdownInterval = null;
+let autoRoundDelay = 5;       // 정답 후 다음 라운드까지 대기(초)
+let autoTimerSeconds = 60;    // 라운드당 제시어 시간
+let currentDrawerId = null;
+let correctThisRound = false;
+
+const DEFAULT_WORDS = [
+  '고양이','강아지','사과','자전거','우주선','피자','공룡','용','로켓','무지개',
+  '잠수함','마라톤','기타','코끼리','유니콘','냉장고','헬리콥터','눈사람','악어',
+  '선글라스','수박','치킨','버스','지구본','화산','텐트','바나나','펭귄','로봇',
+  '마법사','소방차','파인애플','낙타','항공모함','줄넘기','북극곰','드래곤','신호등','잠수함',
+];
+
+const AVATARS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯'];
+
+// ── WebSocket ──
+function connectWS() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'join', role: 'controller', name: '컨트롤러', id: 'controller' }));
+    document.getElementById('ip-display').textContent = `${location.hostname}:8765/player.html`;
+  };
+  ws.onmessage = e => handleMessage(JSON.parse(e.data));
+  ws.onclose = () => setTimeout(connectWS, 2000);
+}
+
+function send(obj) { if (ws?.readyState === 1) ws.send(JSON.stringify(obj)); }
+
+// ── 자동화 모드 토글 ──
+function toggleAutoMode() {
+  autoMode = !autoMode;
+  const toggle = document.getElementById('auto-toggle');
+  const bar = document.getElementById('auto-status-bar');
+  const wordListEditor = document.getElementById('word-list-editor');
+
+  toggle.classList.toggle('on', autoMode);
+  bar.classList.toggle('visible', autoMode);
+
+  // 로비일 때 제시어 목록 에디터 표시
+  const inLobby = !document.getElementById('lobby-panel').classList.contains('hidden');
+  if (wordListEditor) wordListEditor.classList.toggle('hidden', !autoMode || !inLobby);
+
+  if (autoMode) {
+    document.getElementById('auto-status-text').textContent = '자동화 모드 활성 — 게임이 알아서 진행됩니다';
+    addChat('🤖 자동화 모드 ON — 제시어 자동 선택, 타이머 종료 시 자동 넘어갑니다', 'auto');
+    // 기본 단어 목록 채우기
+    if (!document.getElementById('word-list-input').value.trim()) {
+      document.getElementById('word-list-input').value = DEFAULT_WORDS.join(', ');
+    }
+  } else {
+    addChat('👤 수동 모드로 전환됨', 'system');
+    clearAutoTimers();
+  }
+}
+
+function getAutoWordList() {
+  const raw = document.getElementById('word-list-input').value;
+  const words = raw.split(',').map(w => w.trim()).filter(Boolean);
+  return words.length > 0 ? words : DEFAULT_WORDS;
+}
+
+function pickRandomWord() {
+  const words = getAutoWordList();
+  return words[Math.floor(Math.random() * words.length)];
+}
+
+function clearAutoTimers() {
+  clearTimeout(autoNextTimeout);
+  clearInterval(autoCountdownInterval);
+  document.getElementById('auto-countdown').textContent = '';
+}
+
+// 자동 다음 라운드 예약 (delaySeconds 후)
+function scheduleAutoNext(delaySeconds, reason) {
+  clearAutoTimers();
+  addChat(`🤖 ${delaySeconds}초 후 자동으로 다음 라운드 진행 (${reason})`, 'auto');
+  let left = delaySeconds;
+  document.getElementById('auto-countdown').textContent = `다음 라운드까지 ${left}초`;
+
+  // 진행 바 애니메이션
+  const fill = document.getElementById('auto-next-fill');
+  if (fill) {
+    fill.style.transition = 'none';
+    fill.style.width = '100%';
+    setTimeout(() => {
+      fill.style.transition = `width ${delaySeconds}s linear`;
+      fill.style.width = '0%';
+    }, 50);
+  }
+
+  autoCountdownInterval = setInterval(() => {
+    left--;
+    document.getElementById('auto-countdown').textContent = left > 0 ? `다음 라운드까지 ${left}초` : '';
+    if (left <= 0) clearInterval(autoCountdownInterval);
+  }, 1000);
+
+  autoNextTimeout = setTimeout(() => {
+    document.getElementById('auto-countdown').textContent = '';
+    send({ type: 'next_round' });
+  }, delaySeconds * 1000);
+}
+
+// ── 메시지 처리 ──
+function handleMessage(data) {
+  switch (data.type) {
+    case 'player_joined':
+    case 'player_left':
+    case 'player_ready':
+      updatePlayers(data.players);
+      break;
+
+    case 'joined':
+      if (data.game_state) updatePlayers(data.game_state.players || []);
+      break;
+
+    case 'need_word':
+      correctThisRound = false;
+      currentDrawerId = data.drawer_id;
+      if (autoMode) {
+        // 자동: 랜덤 단어 즉시 전송
+        const word = pickRandomWord();
+        addChat(`🤖 자동 제시어 선택: "${word}"`, 'auto');
+        send({ type: 'set_word', word });
+      } else {
+        showWordPanel(data);
+      }
+      break;
+
+    case 'round_started':
+      if (autoMode) {
+        // 정답 5초 후 공개
+        showAutoWordPanel(data, true);
+        startTimer(data.timer || 60);
+        clearAutoTimers();
+        setTimeout(() => showAutoWordPanel(data, false), 5000);
+        autoNextTimeout = setTimeout(() => {
+          if (!correctThisRound) scheduleAutoNext(3, '시간 초과');
+        }, (data.timer || 60) * 1000);
+      } else {
+        showDrawingPanel(data, true);
+        startTimer(data.timer || 60);
+        setTimeout(() => showDrawingPanel(data, false), 5000);
+      }
+      break;
+
+    case 'correct_guess':
+      correctThisRound = true;
+      addChat(`✅ ${data.player_name}이(가) 정답을 맞혔습니다!`, 'correct');
+      updatePlayers(data.players);
+      if (autoMode) {
+        clearAutoTimers();
+        scheduleAutoNext(autoRoundDelay, '정답 완료');
+      }
+      break;
+
+    case 'chat':
+      addChat(`${data.player_name}: ${data.text}`, 'wrong');
+      break;
+
+    case 'gartic_phase':
+      showGarticStatus(data.phase);
+      garticSubmissions = { sentence: new Set(), drawing: new Set(), guess: new Set() };
+      renderGarticSubmissions();
+      break;
+
+    case 'sentence_submitted':
+      garticSubmissions.sentence.add(data.player_id);
+      renderGarticSubmissions();
+      addChat(`📝 ${getPlayerName(data.player_id)} 문장 제출 완료`, 'system');
+      break;
+
+    case 'drawing_submitted':
+      garticSubmissions.drawing.add(data.player_id);
+      renderGarticSubmissions();
+      addChat(`🖼 ${getPlayerName(data.player_id)} 그림 제출 완료`, 'system');
+      break;
+
+    case 'gartic_results':
+      showGarticResults(data.relay);
+      break;
+
+    case 'game_ended':
+      clearAutoTimers();
+      showResults(data.players);
+      break;
+  }
+}
+
+// ── 플레이어 ──
+function getPlayerName(id) {
+  return players[id]?.name || id;
+}
+
+function updatePlayers(list) {
+  players = {};
+  list.forEach(p => players[p.id] = p);
+  renderPlayers();
+  document.getElementById('conn-count').textContent = `접속 ${list.length}명`;
+  const startBtn = document.getElementById('start-btn');
+  if (list.length >= 2) {
+    startBtn.disabled = false;
+    startBtn.textContent = '🎮 게임 시작!';
+    startBtn.className = 'btn btn-primary';
+  } else {
+    startBtn.disabled = true;
+    startBtn.textContent = `⏳ 플레이어 대기 중… (${list.length}/2명 이상 필요)`;
+  }
+}
+
+function renderPlayers(drawerId = null) {
+  const el = document.getElementById('player-list');
+  const sorted = Object.values(players).sort((a, b) => b.score - a.score);
+  el.innerHTML = sorted.map((p, i) => `
+    <div class="player-item ${p.id === (drawerId || currentDrawerId) ? 'drawer' : ''}">
+      <div class="player-avatar" style="background:hsl(${i*60},60%,80%)">${AVATARS[i % AVATARS.length]}</div>
+      <div>
+        <div style="font-weight:700;font-size:.9rem">${p.name}</div>
+        ${p.id === (drawerId || currentDrawerId) ? '<div style="font-size:.7rem;color:var(--accent)">✏️ 출제자</div>' : ''}
+      </div>
+      <div class="player-score">${p.score}점</div>
+    </div>
+  `).join('');
+}
+
+// ── 모드 선택 ──
+function selectMode(mode) {
+  selectedMode = mode;
+  document.getElementById('mode-catchmind').classList.toggle('selected', mode === 'catchmind');
+  document.getElementById('mode-gartic').classList.toggle('selected', mode === 'gartic');
+  document.getElementById('rounds-row').style.display = mode === 'catchmind' ? 'flex' : 'none';
+}
+
+function startGame() {
+  const rounds = parseInt(document.getElementById('rounds-slider').value);
+  send({ type: 'start_game', mode: selectedMode, rounds });
+  setBadge(selectedMode === 'catchmind' ? '캐치마인드' : 'Gartic Phone');
+  hide('word-list-editor');
+}
+
+// ── 패널 전환 ──
+function showWordPanel(data) {
+  hideAll();
+  show('word-panel');
+  document.getElementById('word-round-info').textContent =
+    `라운드 ${data.round} / ${data.max_rounds} — 출제자: ${data.drawer_name}`;
+  document.getElementById('word-input').value = '';
+  document.getElementById('word-input').focus();
+  const shuffled = [...DEFAULT_WORDS].sort(() => Math.random() - .5).slice(0, 8);
+  document.getElementById('quick-words').innerHTML = shuffled.map(w =>
+    `<span class="quick-word" onclick="setQuickWord('${w}')">${w}</span>`
+  ).join('');
+}
+
+function showAutoWordPanel(data, hideWord = false) {
+  hideAll();
+  show('auto-word-panel');
+  const wordEl = document.getElementById('auto-word-text');
+  if (hideWord) {
+    wordEl.textContent = '⏳ 5초 후 공개…';
+    wordEl.style.color = '#6fcf97';
+    wordEl.style.fontSize = '1.1rem';
+  } else {
+    wordEl.textContent = data.word || '—';
+    wordEl.style.color = '#a8f5c7';
+    wordEl.style.fontSize = '1.6rem';
+  }
+  document.getElementById('auto-round-tag').textContent =
+    `라운드 ${data.round || '?'} / ${data.max_rounds || '?'} — 출제자: ${data.drawer_name || ''}`;
+  renderPlayers(data.drawer);
+}
+
+function showDrawingPanel(data, hideWord = false) {
+  hideAll();
+  show('drawing-panel');
+  document.getElementById('drawer-name-display').textContent = data.drawer_name || '';
+  const wordEl = document.getElementById('word-display');
+  if (hideWord) {
+    wordEl.textContent = '⏳ 5초 후 공개…';
+    wordEl.style.fontSize = '1rem';
+    wordEl.style.opacity = '0.6';
+  } else {
+    wordEl.textContent = data.word || '—';
+    wordEl.style.fontSize = '1.3rem';
+    wordEl.style.opacity = '1';
+  }
+  renderPlayers(data.drawer);
+}
+
+function showGarticStatus(phase) {
+  hideAll();
+  show('gartic-status-panel');
+  const labels = { write: '✏️ 문장 작성 중…', draw: '🎨 그림 그리는 중…', guess: '🔍 정답 추측 중…' };
+  document.getElementById('gartic-status-text').textContent = labels[phase] || '';
+}
+
+function renderGarticSubmissions() {
+  const el = document.getElementById('gartic-submissions');
+  const total = Object.keys(players).length;
+  el.innerHTML = [
+    { key: 'sentence', label: '문장' },
+    { key: 'drawing', label: '그림' },
+    { key: 'guess', label: '추측' },
+  ].map(p => {
+    const done = garticSubmissions[p.key].size;
+    if (done === 0) return '';
+    return `<div style="margin-bottom:6px;font-size:.85rem">
+      ${p.label} 제출: ${done}/${total}명
+      <div style="background:#eee;border-radius:99px;height:6px;margin-top:3px">
+        <div style="width:${(done/total)*100}%;background:var(--teal);height:100%;border-radius:99px"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showGarticResults(relay) {
+  hideAll();
+  show('results-panel');
+  show('relay-chain-wrap');
+  document.getElementById('final-scores').innerHTML = '';
+  document.getElementById('relay-chain').innerHTML = relay.map(item => {
+    if (item.type === 'sentence' || item.type === 'guess') {
+      return `<div class="relay-item ${item.type}-item">
+        <div class="relay-author">${item.author_name} — ${item.type === 'sentence' ? '문장' : '추측'}</div>
+        <div>${item.content}</div>
+      </div>`;
+    }
+    return `<div class="relay-item drawing-item">
+      <div class="relay-author">${item.author_name} — 그림</div>
+      <img src="${item.content}" alt="그림">
+    </div>`;
+  }).join('');
+  setBadge('결과');
+}
+
+function showResults(playerList) {
+  hideAll();
+  show('results-panel');
+  const sorted = [...playerList].sort((a, b) => b.score - a.score);
+  document.getElementById('final-scores').innerHTML = sorted.map((p, i) => `
+    <div class="player-item" style="margin-bottom:8px">
+      <div style="font-family:'Jua',sans-serif;font-size:1.2rem;width:30px">${['🥇','🥈','🥉'][i] || (i+1)+'위'}</div>
+      <div style="font-weight:700">${p.name}</div>
+      <div class="player-score">${p.score}점</div>
+    </div>
+  `).join('');
+  setBadge('결과');
+}
+
+// ── 수동 제어 ──
+function setQuickWord(word) { document.getElementById('word-input').value = word; }
+
+function sendWord() {
+  const word = document.getElementById('word-input').value.trim();
+  if (!word) return;
+  send({ type: 'set_word', word });
+}
+
+function nextRound() {
+  clearInterval(timerInterval);
+  clearAutoTimers();
+  send({ type: 'next_round' });
+}
+
+function backToLobby() {
+  clearAutoTimers();
+  send({ type: 'end_game' });
+  hideAll();
+  show('lobby-panel');
+  // 자동 모드면 단어 에디터 다시 표시
+  if (autoMode) show('word-list-editor');
+  setBadge('로비');
+  currentDrawerId = null;
+}
+
+// ── 타이머 ──
+function startTimer(seconds) {
+  clearInterval(timerInterval);
+  timerSeconds = seconds;
+  const bar = document.getElementById('timer-bar');
+  const txt = document.getElementById('timer-text');
+  if (!bar) return;
+  timerInterval = setInterval(() => {
+    timerSeconds--;
+    const pct = (timerSeconds / seconds) * 100;
+    bar.style.width = pct + '%';
+    bar.classList.toggle('urgent', timerSeconds <= 10);
+    if (txt) txt.textContent = timerSeconds + '초';
+    if (timerSeconds <= 0) clearInterval(timerInterval);
+  }, 1000);
+}
+
+// ── 채팅 ──
+function addChat(text, cls = '') {
+  const el = document.getElementById('chat-log');
+  const div = document.createElement('div');
+  div.className = `chat-msg ${cls}`;
+  div.textContent = text;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── 유틸 ──
+const ALL_PANELS = ['lobby-panel','word-panel','auto-word-panel','drawing-panel','gartic-status-panel','results-panel'];
+function hideAll() { ALL_PANELS.forEach(id => hide(id)); hide('relay-chain-wrap'); }
+function show(id) { document.getElementById(id)?.classList.remove('hidden'); }
+function hide(id) { document.getElementById(id)?.classList.add('hidden'); }
+function setBadge(text) { document.getElementById('phase-badge').textContent = text; }
+
+connectWS();
+</script>
+</body>
+</html>
